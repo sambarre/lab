@@ -1,0 +1,95 @@
+version: '3.8'
+networks:
+  frontend:
+    external: true
+    
+services:
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    networks:
+      - frontend
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=frontend"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.local.barrett.network`)"
+      - "traefik.http.routers.grafana.service=grafana-service"
+      - "traefik.http.services.grafana-service.loadbalancer.server.port=3000"
+  influxdb:
+    container_name: influxdb
+    image: influxdb:2.7-alpine
+    restart: unless-stopped
+    networks:
+      - frontend
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - /etc/influxdb2:/etc/influxdb2
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=frontend"
+      - "traefik.http.routers.influxdb.entrypoints=websecure"
+      - "traefik.http.routers.influxdb.tls=true"
+      - "traefik.http.routers.influxdb.rule=Host(`influxdb.local.barrett.network`)"
+      - "traefik.http.routers.influxdb.service=influxdb-service"
+      - "traefik.http.services.influxdb-service.loadbalancer.server.port=8086"
+      # (Optional) If you're using self-signed certs
+      # - /etc/ssl/cert.pem/:/etc/ssl/cert.pem
+      # - /etc/ssl/cert-key.pem/:/etc/ssl/cert-key.pem
+    # (Optional) If you're using self-signed certs
+    # command: influxd --tls-cert=/etc/ssl/cert.pem --tls-key=/etc/ssl/cert-key.pem
+
+    # (Optional) Automatic Setup
+    # environment:
+    #   - DOCKER_INFLUXDB_INIT_MODE=setup
+    #   - DOCKER_INFLUXDB_INIT_USERNAME=my-user
+    #   - DOCKER_INFLUXDB_INIT_PASSWORD=my-password
+    #   - DOCKER_INFLUXDB_INIT_ORG=my-org
+    #   - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
+    # # (Optional) Configure Data Retention
+    #   - DOCKER_INFLUXDB_INIT_RETENTION=1w
+    # # (Optional) Admin Token
+    #   - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - frontend
+    volumes:
+      - /prometheus/:/etc/prometheus
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml" 
+      - "--storage.tsdb.retention.time=7d"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=frontend"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.local.barrett.network`)"
+      - "traefik.http.routers.prometheus.service=prometheus-service"
+      - "traefik.http.services.prometheus-service.loadbalancer.server.port=9090"
+  speedtest-exporter:
+    image: miguelndecarvalho/speedtest-exporter:latest
+    container_name: speedtest-exporter
+    #environment:
+    #  - SPEEDTEST_PORT=<speedtest-port> #optional
+    #  - SPEEDTEST_SERVER=<server-id> #optional
+    networks:
+      - frontend
+    ports:
+      - 9798:9798
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+    driver: local
+  influxdb-data:
+    driver: local
+  prometheus-data:
+    driver: local
