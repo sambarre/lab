@@ -19,7 +19,7 @@ services:
       - /traefik/certs/:/etc/traefik/certs/
     # -- (Optional) When using Cloudflare as Cert Resolver
     environment:
-      - CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
     # -- (Optional) When using a custom network
     networks:
       - frontend
